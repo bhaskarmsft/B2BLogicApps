@@ -1,0 +1,427 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "logicAppLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "westcentralus",
+        "westus2",
+        "[resourceGroup().location]"
+      ],
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    },
+    "integrationAccountName": {
+      "type": "string",
+      "defaultValue": "integration"
+    },
+    "integrationAccountSku": {
+      "type": "string",
+      "defaultValue": "Standard"
+    },
+    "SecondaryIntegrationAccountName": {
+      "type": "string",
+      "defaultValue": "integration"
+    },
+    "SecondaryResourceGroupName": {
+      "type": "string"
+    },
+    "SecondaryResourceGroupLocation": {
+      "type": "string"
+    },
+    "syncLaState": {
+      "type": "string",
+      "defaultValue": "Disabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ]
+    }
+  },
+  "variables": {
+    
+  },
+  "resources": [
+    {
+      "properties": {
+        "displayName": "as2p",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'as2')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(resourceGroup().id,'/providers/Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+        }
+      },
+      "name": "as2p",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "properties": {
+        "displayName": "as2s",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'as2')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId(parameters('SecondaryResourceGroupName'),'Microsoft.Logic/IntegrationAccounts', parameters('SecondaryIntegrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(subscription().Id, '/resourceGroups/', parameters('SecondaryResourceGroupName'),'/providers/Microsoft.Logic/integrationAccounts/', parameters('SecondaryIntegrationAccountName'))]"
+        }
+      },
+      "name": "as2s",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "properties": {
+        "displayname": "x12s",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId(parameters('SecondaryResourceGroupName'),'Microsoft.Logic/integrationAccounts/', parameters('SecondaryIntegrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(subscription().Id, '/resourceGroups/', parameters('SecondaryResourceGroupName'),'/providers/Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+        }
+      },
+      "name": "x12s",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "properties": {
+        "displayname": "x12p",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(resourceGroup().id,'/providers/Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+        }
+      },
+      "name": "x12p",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "properties": {
+        "displayname": "x12src",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId(parameters('SecondaryResourceGroupName'),'Microsoft.Logic/integrationAccounts/', parameters('SecondaryIntegrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(subscription().Id, '/resourceGroups/', parameters('SecondaryResourceGroupName'),'/providers/Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+        }
+      },
+      "name": "x12src",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "properties": {
+        "displayname": "x12prc",
+        "customParameterValues": {},
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "parameterValues": {
+          "integrationAccountUrl": "[listCallBackUrl(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2016-06-01').value]",
+          "integrationAccountId": "[concat(resourceGroup().id,'/providers/Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+        }
+      },
+      "name": "x12prc",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Web/connections",
+      "location": "[parameters('logicAppLocation')]"
+    },
+    {
+      "name": "x12ReceivedControlNumbersNameSync",
+      "apiVersion": "2016-06-01",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "tags": {
+        "displayName": "x12ReceivedControlNumbers"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', 'x12prc')]",
+        "[resourceId('Microsoft.Web/connections', 'x12src')]"
+      ],
+      "properties": {
+        "state": "[parameters('syncLaState')]",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "When_a_received_control_number_is_modified": {
+              "recurrence": {
+                "frequency": "Minute",
+                "interval": 3
+              },
+              "splitOn": "@triggerBody()",
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['x12src']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/triggers/onmodifiedreceivedcontrolnumber"
+              }
+            }
+          },
+          "actions": {
+            "Add_or_update_a_received_control_number": {
+              "runAfter": {},
+              "type": "ApiConnection",
+              "inputs": {
+                "body": {
+                  "AgreementName": "@{triggerBody()?['AgreementName']}",
+                  "ControlNumber": "@{triggerBody()?['ControlNumber']}",
+                  "ControlNumberChangedTime": "@{triggerBody()?['ControlNumberChangedTime']}",
+                  "ControlNumberType": "@{triggerBody()?['ControlNumberType']}",
+                  "IsAcknowledgement": "@triggerBody()?['IsAcknowledgement']",
+                  "IsMessageProcessingFailed": "@triggerBody()?['IsMessageProcessingFailed']"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['x12prc']['connectionId']"
+                  }
+                },
+                "method": "put",
+                "path": "/receivedcontrolnumbers"
+              }
+            }
+          },
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "x12prc": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections','x12prc')]",
+                "connectionName": "x12prc"
+              },
+              "x12src": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('SecondaryResourceGroupLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections','x12src')]",
+                "connectionName": "x12src"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "x12GeneratedControlNumbersSync",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "2016-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', 'x12p')]",
+        "[resourceId('Microsoft.Web/connections', 'x12s')]"
+      ],
+      "tags": {
+        "displayName": "x12GeneratedControlNumbers"
+      },
+      "properties": {
+        "state": "[parameters('syncLaState')]",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Add_or_update_a_generated_control_number": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['x12p']['connectionId']"
+                  }
+                },
+                "method": "put",
+                "path": "/generatedcontrolnumbers",
+                "body": {
+                  "AgreementName": "@{triggerBody()?['AgreementName']}",
+                  "ControlNumberType": "@{triggerBody()?['ControlNumberType']}",
+                  "ControlNumber": "@{triggerBody()?['ControlNumber']}",
+                  "ControlNumberChangedTime": "@{triggerBody()?['ControlNumberChangedTime']}",
+                  "IsAcknowledgement": "@triggerBody()?['IsAcknowledgement']",
+                  "IsMessageProcessingFailed": "@triggerBody()?['IsMessageProcessingFailed']"
+                }
+              },
+              "runAfter": {}
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "When_a_generated_control_number_is_modified_2": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['x12s']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/triggers/onmodifiedgeneratedcontrolnumber"
+              },
+              "recurrence": {
+                "frequency": "Minute",
+                "interval": 3
+              },
+              "splitOn": "@triggerBody()"
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "x12p": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections','x12p')]",
+                "connectionName": "x12p"
+              },
+              "x12s": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('SecondaryResourceGroupLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections','x12s')]",
+                "connectionName": "x12s"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "AS2MICGeneratedSync",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "apiVersion": "2016-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', 'as2p')]",
+        "[resourceId('Microsoft.Web/connections', 'as2s')]"
+      ],
+      "tags": {
+        "displayName": "AS2MICGeneratedSync"
+      },
+      "properties": {
+        "state": "[parameters('syncLaState')]",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Add_or_update_a_MIC_content": {
+              "inputs": {
+                "body": {
+                  "AgreementName": "@{triggerBody()?['AgreementName']}",
+                  "As2From": "@{triggerBody()?['As2From']}",
+                  "As2To": "@{triggerBody()?['As2To']}",
+                  "MessageId": "@{triggerBody()?['MessageId']}",
+                  "MicChangedTime": "@{triggerBody()?['MicChangedTime']}",
+                  "MicValue": "@{triggerBody()?['MicValue']}"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['as2p']['connectionId']"
+                  }
+                },
+                "method": "put",
+                "path": "/createOrUpdateMic"
+              },
+              "runAfter": {},
+              "type": "ApiConnection"
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "When_a_MIC_value_is_created": {
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['as2s']['connectionId']"
+                  }
+                },
+                "method": "get",
+                "path": "/triggers/oncreatedmic"
+              },
+              "recurrence": {
+                "frequency": "Minute",
+                "interval": 3
+              },
+              "splitOn": "@triggerBody()",
+              "type": "ApiConnection"
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "as2p": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'as2')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', 'as2p')]",
+                "connectionName": "as2p"
+              },
+              "as2s": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('SecondaryResourceGroupLocation'), '/managedApis/', 'as2')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', 'as2s')]",
+                "connectionName": "as2s"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

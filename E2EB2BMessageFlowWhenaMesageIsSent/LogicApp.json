@@ -1,0 +1,1081 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_artifactsLocation": {
+      "type": "string"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "securestring"
+    },
+    "logicAppName": {
+      "type": "string",
+      "defaultValue": "DecodeB2BLA",
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "logicAppLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "westcentralus",
+        "westus2",
+        "[resourceGroup().location]"
+      ],
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    },
+    "x12_Connection_Name": {
+      "type": "string",
+      "defaultValue": "DecodeX12Connection"
+    },
+    "x12_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "DecodeX12Connection"
+    },
+    "as2_Connection_Name": {
+      "type": "string",
+      "defaultValue": "DecodeAs2Connection"
+    },
+    "as2_Connection_DisplayName": {
+      "type": "string",
+      "defaultValue": "DecodeAs2Connection"
+    },
+    "integrationAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Integration Account Name"
+      },
+      "defaultValue": "integration"
+    },
+    "integrationAccountSku": {
+      "type": "string",
+      "metadata": {
+        "description": "Integration Account SKU"
+      },
+      "defaultValue": "Standard",
+      "allowedValues": [
+        "Free",
+        "Standard"
+      ]
+    },
+    "ContosoPublicCertName": {
+      "type": "string",
+      "metadata": {
+        "description": "Contoso Public Cert Name"
+      },
+      "defaultValue": "ContosoPublicCert"
+    },
+    "schemaName": {
+      "type": "string",
+      "metadata": {
+        "description": "Schema Name"
+      },
+      "defaultValue": "X12_00401_850"
+    },
+    "mapName": {
+      "type": "string",
+      "metadata": {
+        "description": "Map Name"
+      },
+      "defaultValue": "Inbound4010850_to_OrderFile"
+    },
+    "KeyvaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Keyvault Name"
+      }
+    },
+    "KeyvaultKeyName": {
+      "type": "string",
+      "metadata": {
+        "description": "Keyvault Key Name"
+      }
+    },
+    "EncodeLogicAppName": {
+      "type": "string",
+      "defaultValue": "EncodeB2BLA",
+      "minLength": 1,
+      "maxLength": 80,
+      "metadata": {
+        "description": "Name of the Logic App."
+      }
+    },
+    "EncodeLogicAppLocation": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "westcentralus",
+        "westus2",
+        "[resourceGroup().location]"
+      ],
+      "metadata": {
+        "description": "Location of the Logic App."
+      }
+    },
+    "x12_Encode_Connection_Name": {
+      "type": "string",
+      "defaultValue": "X12EncodeConnection"
+    },
+    "as2_Encode_Connection_Name": {
+      "type": "string",
+      "defaultValue": "EncodeAs2Connection"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('logicAppName')]",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('logicAppLocation')]",
+      "tags": {
+        "displayName": "DecodeLogicApp"
+      },
+      "apiVersion": "2016-06-01",
+      "properties": {
+        "integrationAccount": {
+          "name": "[parameters('integrationAccountName')]",
+          "id": "[concat(resourceGroup().id,'/providers/Microsoft.Logic/integrationAccounts/',parameters('integrationAccountName'))]",
+          "type": "Microsoft.Logic/integrationAccounts"
+        },
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "Check_Bad_Messages": {
+              "type": "If",
+              "expression": "@greaterOrEquals(length(body('Decode_X12_message')?['BadMessages']), 1)",
+              "actions": {},
+              "runAfter": {
+                "Decode_X12_message": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Check_Generated_Acks": {
+              "type": "If",
+              "expression": "@greaterOrEquals(length(body('Decode_X12_message')?['GeneratedAcks']), 1)",
+              "actions": {},
+              "runAfter": {
+                "Decode_X12_message": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Check_MDN_Expected": {
+              "type": "If",
+              "expression": "@equals(body('Decode_AS2_message')?['AS2Message']?['MdnExpected'], 'Expected')",
+              "actions": {
+                "Check_MDN_Type": {
+                  "type": "If",
+                  "expression": "@equals(body('Decode_AS2_message')?['OutgoingMdn']?['MdnType'], 'Async')",
+                  "actions": {
+                    "Send_200_OK_for_Async_MDN": {
+                      "type": "Response",
+                      "inputs": {
+                        "statusCode": 200
+                      },
+                      "runAfter": {}
+                    },
+                    "Send_Async_MDN": {
+                      "type": "Http",
+                      "inputs": {
+                        "method": "POST",
+                        "uri": "@{body('Decode_AS2_message')?['OutgoingMdn']?['ReceiptDeliveryOption']}",
+                        "headers": "@body('Decode_AS2_message')?['OutgoingMdn']?['OutboundHeaders']",
+                        "body": "@base64ToBinary(body('Decode_AS2_message')?['OutgoingMdn']?['Content'])"
+                      },
+                      "runAfter": {
+                        "Send_200_OK_for_Async_MDN": [
+                          "Succeeded"
+                        ]
+                      }
+                    }
+                  },
+                  "runAfter": {},
+                  "else": {
+                    "actions": {
+                      "Send_Sync_MDN": {
+                        "type": "Response",
+                        "inputs": {
+                          "statusCode": 200,
+                          "headers": "@body('Decode_AS2_message')?['OutgoingMdn']?['OutboundHeaders']",
+                          "body": "@base64ToBinary(body('Decode_AS2_message')?['OutgoingMdn']?['Content'])"
+                        },
+                        "runAfter": {}
+                      }
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "Decode_AS2_message": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Send_200_OK": {
+                    "type": "Response",
+                    "inputs": {
+                      "statusCode": 200
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            },
+            "Check_Received_Acks": {
+              "type": "If",
+              "expression": "@greaterOrEquals(length(body('Decode_X12_message')?['ReceivedAcks']), 1)",
+              "actions": {},
+              "runAfter": {
+                "Decode_X12_message": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Decode_AS2_message": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['DecodeAs2Connection']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/decode",
+                "body": "@triggerBody()",
+                "headers": "@triggerOutputs()['headers']"
+              },
+              "runAfter": {}
+            },
+            "Decode_X12_message": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['DecodeX12Connection']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/decode",
+                "body": "@base64ToBinary(body('Decode_AS2_message')?['AS2Message']?['Content'])"
+              },
+              "runAfter": {
+                "Decode_AS2_message": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "For_each_Good_Message": {
+              "type": "Foreach",
+              "foreach": "@body('Decode_X12_message')?['GoodMessages']",
+              "actions": {
+                "Transform_XML": {
+                  "type": "Xslt",
+                  "inputs": {
+                    "content": "@xml(base64ToBinary(item()?['Payload']))",
+                    "integrationAccount": {
+                      "map": {
+                        "name": "[parameters('mapName')]"
+                      }
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "runAfter": {
+                "Decode_X12_message": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {}
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "DecodeAs2Connection": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'as2')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('as2_Connection_Name'))]",
+                "connectionName": "[parameters('as2_Connection_Name')]"
+              },
+              "DecodeX12Connection": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('x12_Connection_Name'))]",
+                "connectionName": "[parameters('x12_Connection_Name')]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', parameters('as2_Connection_Name'))]",
+        "[resourceId('Microsoft.Web/connections', parameters('x12_Connection_Name'))]",
+        "[resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName'))]"
+      ]
+    },
+    {
+      "apiVersion": "2016-06-01",
+      "location": "[parameters('logicAppLocation')]",
+      "name": "[parameters('integrationAccountName')]",
+      "properties": {},
+      "resources": [
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "[parameters('KeyvaultKeyName')]",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]"
+          ],
+          "properties": {
+            "key": {
+              "keyVault": {
+                "name": "[parameters('KeyvaultName')]",
+                "id": "[resourceId('Microsoft.KeyVault/vaults',parameters('KeyvaultName'))]",
+                "type": "Microsoft.KeyVault/vaults"
+              },
+              "keyName": "[parameters('KeyvaultKeyName')]"
+            },
+            "publicCertificate": "MIIDOjCCAiKgAwIBAgIQDYTSgVe+RzuDNn6O02hjvjANBgkqhkiG9w0BAQsFADAaMRgwFgYDVQQDEw93d3cuY29udG9zby5jb20wHhcNMTcwNTE3MDgwMzQ3WhcNMTgwNTE3MDgxMzQ3WjAaMRgwFgYDVQQDEw93d3cuY29udG9zby5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC6q94PLC31c0bH3T42Q5yM8r2gN4OtL3leO2hJs+cPclH2jdOTvrQgiJstrAXB9yLPJfQDOdwo+x1HqLNbZTbiu6NLMhhlwDZtHAjGv/y9stOOjFEUvwQ8fN7cMWzaVaTKAAewZmFUo+SHDa2jCrayzO+egXyEJqQJ6wEECQSab1QOWKkeI49aAbrhGcaZrezlgONNb3uVApBJ5aaqinMAAvo0sbApn4241BZ6cVOrYG4T6zXBxSUODvTsmClTyKqVuYlC7LjcyMsKiuWyVf2m2wdI2Qe8D/vQWFP/eTXliLuZ00ZbpkQX3VsTBot0VVd+ymcsfUuUx3hhCYTOV48DAgMBAAGjfDB6MA4GA1UdDwEB/wQEAwIFoDAJBgNVHRMEAjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAfBgNVHSMEGDAWgBRl5LLBHV7Jz22grcvjqN8i3uUcYzAdBgNVHQ4EFgQUZeSywR1eyc9toK3L46jfIt7lHGMwDQYJKoZIhvcNAQELBQADggEBAAn5V01K1+exasoISIj6Phbmj0Fppx39kaRMBN2XqtF++eOQJtJXua4oVJaG0GCZjiuD0E2E4TaH5W3jlIpGQvjnhcQtkc6V9vM1pwH2XDT+t0A9UME5dCc6ddtgh3PH/9fq3YG4MPMSNkhN0+p/L3ja2iIBaHwLBdEYhCDMH31vlj1nF0pmcI19c/ffugjAJDsKpdSzH+2oLozJYG6y52C9JLoTSzLVpeUag0IXOAhunrVz6RwPd8bjaheMhvpV7YZUe6GGVYvOXoA+WHp2n5pf1wQZH+Q8mfqUQwtvNRy5JSA3NVomvEN6hA9xGChmJ+xqcGWfskT6N6t21i+iq+Y="
+          },
+          "type": "Certificates"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "X12agreement",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]",
+            "[parameters('schemaName')]"
+          ],
+          "properties": {
+            "hostPartner": "Contoso",
+            "guestPartner": "Fabrikam",
+            "hostIdentity": {
+              "qualifier": "ZZ",
+              "value": "1234567"
+            },
+            "guestIdentity": {
+              "qualifier": "ZZ",
+              "value": "0987654321"
+            },
+            "agreementType": "X12",
+            "content": {
+              "x12": {
+                "receiveAgreement": {
+                  "protocolSettings": {
+                    "validationSettings": {
+                      "validateCharacterSet": false,
+                      "checkDuplicateInterchangeControlNumber": true,
+                      "interchangeControlNumberValidityDays": 30,
+                      "checkDuplicateGroupControlNumber": true,
+                      "checkDuplicateTransactionSetControlNumber": true,
+                      "validateEDITypes": true,
+                      "validateXSDTypes": false,
+                      "allowLeadingAndTrailingSpacesAndZeroes": false,
+                      "trimLeadingAndTrailingSpacesAndZeroes": false,
+                      "trailingSeparatorPolicy": "NotAllowed"
+                    },
+                    "framingSettings": {
+                      "dataElementSeparator": 42,
+                      "componentSeparator": 58,
+                      "replaceSeparatorsInPayload": false,
+                      "replaceCharacter": 36,
+                      "segmentTerminator": 126,
+                      "characterSet": "UTF8",
+                      "segmentTerminatorSuffix": "None"
+                    },
+                    "envelopeSettings": {
+                      "controlStandardsId": 85,
+                      "useControlStandardsIdAsRepetitionCharacter": false,
+                      "senderApplicationId": "BTS-SENDER",
+                      "receiverApplicationId": "RECEIVE-APP",
+                      "controlVersionNumber": "00401",
+                      "interchangeControlNumberLowerBound": 1,
+                      "interchangeControlNumberUpperBound": 999999999,
+                      "rolloverInterchangeControlNumber": true,
+                      "enableDefaultGroupHeaders": true,
+                      "groupControlNumberLowerBound": 1,
+                      "groupControlNumberUpperBound": 999999999,
+                      "rolloverGroupControlNumber": true,
+                      "groupHeaderAgencyCode": "T",
+                      "groupHeaderVersion": "00401",
+                      "transactionSetControlNumberLowerBound": 1,
+                      "transactionSetControlNumberUpperBound": 999999999,
+                      "rolloverTransactionSetControlNumber": true,
+                      "overwriteExistingTransactionSetControlNumber": true,
+                      "groupHeaderDateFormat": "CCYYMMDD",
+                      "groupHeaderTimeFormat": "HHMM",
+                      "usageIndicator": "Test"
+                    },
+                    "acknowledgementSettings": {
+                      "needTechnicalAcknowledgement": true,
+                      "batchTechnicalAcknowledgements": true,
+                      "needFunctionalAcknowledgement": true,
+                      "functionalAcknowledgementVersion": "00401",
+                      "batchFunctionalAcknowledgements": true,
+                      "needImplementationAcknowledgement": false,
+                      "batchImplementationAcknowledgements": false,
+                      "needLoopForValidMessages": true,
+                      "sendSynchronousAcknowledgement": true,
+                      "acknowledgementControlNumberLowerBound": 1,
+                      "acknowledgementControlNumberUpperBound": 999999999,
+                      "rolloverAcknowledgementControlNumber": true
+                    },
+                    "messageFilter": {
+                      "messageFilterType": "Exclude"
+                    },
+                    "securitySettings": {
+                      "authorizationQualifier": "00",
+                      "securityQualifier": "00"
+                    },
+                    "processingSettings": {
+                      "maskSecurityInfo": true,
+                      "convertImpliedDecimal": true,
+                      "preserveInterchange": false,
+                      "suspendInterchangeOnError": true,
+                      "createEmptyXmlTagsForTrailingSeparators": true,
+                      "useDotAsDecimalSeparator": true
+                    },
+                    "envelopeOverrides": [],
+                    "validationOverrides": [],
+                    "messageFilterList": [],
+                    "schemaReferences": [
+                      {
+                        "messageId": "850",
+                        "schemaVersion": "00401",
+                        "schemaName": "[parameters('schemaName')]"
+                      }
+                    ],
+                    "x12DelimiterOverrides": []
+                  },
+                  "senderBusinessIdentity": {
+                    "qualifier": "ZZ",
+                    "value": "0987654321"
+                  },
+                  "receiverBusinessIdentity": {
+                    "qualifier": "ZZ",
+                    "value": "1234567"
+                  }
+                },
+                "sendAgreement": {
+                  "protocolSettings": {
+                    "validationSettings": {
+                      "validateCharacterSet": false,
+                      "checkDuplicateInterchangeControlNumber": true,
+                      "interchangeControlNumberValidityDays": 30,
+                      "checkDuplicateGroupControlNumber": false,
+                      "checkDuplicateTransactionSetControlNumber": false,
+                      "validateEDITypes": true,
+                      "validateXSDTypes": false,
+                      "allowLeadingAndTrailingSpacesAndZeroes": false,
+                      "trimLeadingAndTrailingSpacesAndZeroes": false,
+                      "trailingSeparatorPolicy": "NotAllowed"
+                    },
+                    "framingSettings": {
+                      "dataElementSeparator": 42,
+                      "componentSeparator": 58,
+                      "replaceSeparatorsInPayload": false,
+                      "replaceCharacter": 36,
+                      "segmentTerminator": 126,
+                      "characterSet": "UTF8",
+                      "segmentTerminatorSuffix": "None"
+                    },
+                    "envelopeSettings": {
+                      "controlStandardsId": 85,
+                      "useControlStandardsIdAsRepetitionCharacter": true,
+                      "senderApplicationId": "100",
+                      "receiverApplicationId": "100",
+                      "controlVersionNumber": "00401",
+                      "interchangeControlNumberLowerBound": 1,
+                      "interchangeControlNumberUpperBound": 999999999,
+                      "rolloverInterchangeControlNumber": true,
+                      "enableDefaultGroupHeaders": true,
+                      "functionalGroupId": "1",
+                      "groupControlNumberLowerBound": 1,
+                      "groupControlNumberUpperBound": 999999999,
+                      "rolloverGroupControlNumber": true,
+                      "groupHeaderAgencyCode": "T",
+                      "groupHeaderVersion": "0.0",
+                      "transactionSetControlNumberLowerBound": 1,
+                      "transactionSetControlNumberUpperBound": 999999999,
+                      "rolloverTransactionSetControlNumber": true,
+                      "transactionSetControlNumberPrefix": "",
+                      "transactionSetControlNumberSuffix": "",
+                      "overwriteExistingTransactionSetControlNumber": true,
+                      "groupHeaderDateFormat": "CCYYMMDD",
+                      "groupHeaderTimeFormat": "HHMM",
+                      "usageIndicator": "Information"
+                    },
+                    "acknowledgementSettings": {
+                      "needTechnicalAcknowledgement": true,
+                      "batchTechnicalAcknowledgements": true,
+                      "needFunctionalAcknowledgement": true,
+                      "functionalAcknowledgementVersion": "00401",
+                      "batchFunctionalAcknowledgements": true,
+                      "needImplementationAcknowledgement": false,
+                      "batchImplementationAcknowledgements": false,
+                      "needLoopForValidMessages": false,
+                      "sendSynchronousAcknowledgement": true,
+                      "acknowledgementControlNumberLowerBound": 1,
+                      "acknowledgementControlNumberUpperBound": 999999999,
+                      "rolloverAcknowledgementControlNumber": true
+                    },
+                    "messageFilter": {
+                      "messageFilterType": "Exclude"
+                    },
+                    "securitySettings": {
+                      "authorizationQualifier": "00",
+                      "securityQualifier": "00"
+                    },
+                    "processingSettings": {
+                      "maskSecurityInfo": true,
+                      "convertImpliedDecimal": true,
+                      "preserveInterchange": false,
+                      "suspendInterchangeOnError": true,
+                      "createEmptyXmlTagsForTrailingSeparators": true,
+                      "useDotAsDecimalSeparator": true
+                    },
+                    "envelopeOverrides": [],
+                    "validationOverrides": [],
+                    "messageFilterList": [],
+                    "schemaReferences": [
+                      {
+                        "messageId": "850",
+                        "schemaVersion": "00401",
+                        "schemaName": "[parameters('schemaName')]"
+                      }
+                    ],
+                    "x12DelimiterOverrides": [
+                      {
+                        "protocolVersion": "00401",
+                        "messageId": "850",
+                        "dataElementSeparator": 33,
+                        "componentSeparator": 58,
+                        "segmentTerminator": 126,
+                        "segmentTerminatorSuffix": "None",
+                        "replaceCharacter": 36,
+                        "replaceSeparatorsInPayload": false,
+                        "targetNamespace": "http://schemas.microsoft.com/BizTalk/EDI/X12/2006"
+                      }
+                    ]
+                  },
+                  "senderBusinessIdentity": {
+                    "qualifier": "ZZ",
+                    "value": "1234567"
+                  },
+                  "receiverBusinessIdentity": {
+                    "qualifier": "ZZ",
+                    "value": "0987654321"
+                  }
+                }
+              }
+            }
+          },
+          "type": "agreements"
+        },
+        {
+          "dependsOn": [
+            "[parameters('integrationAccountName')]",
+            "[parameters('schemaName')]"
+          ],
+          "properties": {
+            "hostPartner": "Contoso",
+            "guestPartner": "Fabrikam",
+            "hostIdentity": {
+              "qualifier": "AS2Identity",
+              "value": "Contoso"
+            },
+            "guestIdentity": {
+              "qualifier": "AS2Identity",
+              "value": "Fabrikam"
+            },
+            "agreementType": "AS2",
+            "content": {
+              "aS2": {
+                "receiveAgreement": {
+                  "protocolSettings": {
+                    "messageConnectionSettings": {
+                      "ignoreCertificateNameMismatch": false,
+                      "supportHttpStatusCodeContinue": true,
+                      "keepHttpConnectionAlive": true,
+                      "unfoldHttpHeaders": true
+                    },
+                    "acknowledgementConnectionSettings": {
+                      "ignoreCertificateNameMismatch": false,
+                      "supportHttpStatusCodeContinue": false,
+                      "keepHttpConnectionAlive": false,
+                      "unfoldHttpHeaders": false
+                    },
+                    "mdnSettings": {
+                      "needMDN": true,
+                      "signMDN": true,
+                      "sendMDNAsynchronously": false,
+                      "dispositionNotificationTo": "http://localhost",
+                      "signOutboundMDNIfOptional": false,
+                      "mdnText": "",
+                      "sendInboundMDNToMessageBox": false,
+                      "micHashingAlgorithm": "SHA2256"
+                    },
+                    "securitySettings": {
+                      "overrideGroupSigningCertificate": false,
+                      "signingCertificateName": "[parameters('ContosoPublicCertName')]",
+                      "encryptionCertificateName": "[parameters('KeyvaultKeyName')]",
+                      "enableNRRForInboundEncodedMessages": false,
+                      "enableNRRForInboundDecodedMessages": false,
+                      "enableNRRForOutboundMDN": false,
+                      "enableNRRForOutboundEncodedMessages": false,
+                      "enableNRRForOutboundDecodedMessages": false,
+                      "enableNRRForInboundMDN": false
+                    },
+                    "validationSettings": {
+                      "overrideMessageProperties": true,
+                      "encryptMessage": true,
+                      "signMessage": true,
+                      "compressMessage": true,
+                      "checkDuplicateMessage": false,
+                      "interchangeDuplicatesValidityDays": 100,
+                      "checkCertificateRevocationListOnSend": false,
+                      "checkCertificateRevocationListOnReceive": false,
+                      "encryptionAlgorithm": "DES3"
+                    },
+                    "envelopeSettings": {
+                      "messageContentType": "text/plain",
+                      "transmitFileNameInMimeHeader": false,
+                      "fileNameTemplate": "Test",
+                      "suspendMessageOnFileNameGenerationError": true,
+                      "autogenerateFileName": false
+                    },
+                    "errorSettings": {
+                      "suspendDuplicateMessage": false,
+                      "resendIfMDNNotReceived": false
+                    }
+                  },
+                  "senderBusinessIdentity": {
+                    "qualifier": "AS2Identity",
+                    "value": "Fabrikam"
+                  },
+                  "receiverBusinessIdentity": {
+                    "qualifier": "AS2Identity",
+                    "value": "Contoso"
+                  }
+                },
+                "sendAgreement": {
+                  "protocolSettings": {
+                    "messageConnectionSettings": {
+                      "ignoreCertificateNameMismatch": false,
+                      "supportHttpStatusCodeContinue": false,
+                      "keepHttpConnectionAlive": false,
+                      "unfoldHttpHeaders": false
+                    },
+                    "acknowledgementConnectionSettings": {
+                      "ignoreCertificateNameMismatch": false,
+                      "supportHttpStatusCodeContinue": false,
+                      "keepHttpConnectionAlive": false,
+                      "unfoldHttpHeaders": false
+                    },
+                    "mdnSettings": {
+                      "needMDN": true,
+                      "signMDN": false,
+                      "sendMDNAsynchronously": false,
+                      "dispositionNotificationTo": "http://localhost:99999",
+                      "signOutboundMDNIfOptional": false,
+                      "mdnText": "",
+                      "sendInboundMDNToMessageBox": false,
+                      "micHashingAlgorithm": "SHA2256"
+                    },
+                    "securitySettings": {
+                      "overrideGroupSigningCertificate": false,
+                      "signingCertificateName": "[parameters('KeyvaultKeyName')]",
+                      "encryptionCertificateName": "[parameters('ContosoPublicCertName')]",
+                      "enableNRRForInboundEncodedMessages": false,
+                      "enableNRRForInboundDecodedMessages": false,
+                      "enableNRRForOutboundMDN": false,
+                      "enableNRRForOutboundEncodedMessages": false,
+                      "enableNRRForOutboundDecodedMessages": false,
+                      "enableNRRForInboundMDN": false
+                    },
+                    "validationSettings": {
+                      "overrideMessageProperties": true,
+                      "encryptMessage": true,
+                      "signMessage": true,
+                      "compressMessage": true,
+                      "checkDuplicateMessage": false,
+                      "interchangeDuplicatesValidityDays": 100,
+                      "checkCertificateRevocationListOnSend": false,
+                      "checkCertificateRevocationListOnReceive": false,
+                      "encryptionAlgorithm": "DES3"
+                    },
+                    "envelopeSettings": {
+                      "messageContentType": "text/plain",
+                      "transmitFileNameInMimeHeader": false,
+                      "fileNameTemplate": "Test",
+                      "suspendMessageOnFileNameGenerationError": true,
+                      "autogenerateFileName": true
+                    },
+                    "errorSettings": {
+                      "suspendDuplicateMessage": false,
+                      "resendIfMDNNotReceived": false
+                    }
+                  },
+                  "senderBusinessIdentity": {
+                    "qualifier": "AS2Identity",
+                    "value": "Contoso"
+                  },
+                  "receiverBusinessIdentity": {
+                    "qualifier": "AS2Identity",
+                    "value": "Fabrikam"
+                  }
+                }
+              }
+            },
+            "metadata": {}
+          },
+          "name": "AS2agreement",
+          "type": "agreements",
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]"
+          ],
+          "properties": {
+            "schemaType": "Xml",
+            "targetNamespace": "http://schemas.microsoft.com/BizTalk/EDI/X12/2006",
+            "documentName": "[parameters('schemaName')]",
+            "contentLink": {
+              "uri": "[concat(parameters('_artifactsLocation'), '/', parameters('schemaName'), '.xsd', parameters('_artifactsLocationSasToken'))]",
+              "contentVersion": "1"
+            },
+            "contentType": "application/xml"
+          },
+          "name": "[parameters('schemaName')]",
+          "type": "schemas"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "[parameters('ContosoPublicCertName')]",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]"
+          ],
+          "properties": {
+            "key": null,
+            "publicCertificate": "MIIDOjCCAiKgAwIBAgIQDYTSgVe+RzuDNn6O02hjvjANBgkqhkiG9w0BAQsFADAaMRgwFgYDVQQDEw93d3cuY29udG9zby5jb20wHhcNMTcwNTE3MDgwMzQ3WhcNMTgwNTE3MDgxMzQ3WjAaMRgwFgYDVQQDEw93d3cuY29udG9zby5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC6q94PLC31c0bH3T42Q5yM8r2gN4OtL3leO2hJs+cPclH2jdOTvrQgiJstrAXB9yLPJfQDOdwo+x1HqLNbZTbiu6NLMhhlwDZtHAjGv/y9stOOjFEUvwQ8fN7cMWzaVaTKAAewZmFUo+SHDa2jCrayzO+egXyEJqQJ6wEECQSab1QOWKkeI49aAbrhGcaZrezlgONNb3uVApBJ5aaqinMAAvo0sbApn4241BZ6cVOrYG4T6zXBxSUODvTsmClTyKqVuYlC7LjcyMsKiuWyVf2m2wdI2Qe8D/vQWFP/eTXliLuZ00ZbpkQX3VsTBot0VVd+ymcsfUuUx3hhCYTOV48DAgMBAAGjfDB6MA4GA1UdDwEB/wQEAwIFoDAJBgNVHRMEAjAAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAfBgNVHSMEGDAWgBRl5LLBHV7Jz22grcvjqN8i3uUcYzAdBgNVHQ4EFgQUZeSywR1eyc9toK3L46jfIt7lHGMwDQYJKoZIhvcNAQELBQADggEBAAn5V01K1+exasoISIj6Phbmj0Fppx39kaRMBN2XqtF++eOQJtJXua4oVJaG0GCZjiuD0E2E4TaH5W3jlIpGQvjnhcQtkc6V9vM1pwH2XDT+t0A9UME5dCc6ddtgh3PH/9fq3YG4MPMSNkhN0+p/L3ja2iIBaHwLBdEYhCDMH31vlj1nF0pmcI19c/ffugjAJDsKpdSzH+2oLozJYG6y52C9JLoTSzLVpeUag0IXOAhunrVz6RwPd8bjaheMhvpV7YZUe6GGVYvOXoA+WHp2n5pf1wQZH+Q8mfqUQwtvNRy5JSA3NVomvEN6hA9xGChmJ+xqcGWfskT6N6t21i+iq+Y="
+          },
+          "type": "Certificates"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "Contoso",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]"
+          ],
+          "properties": {
+            "partnerType": "B2B",
+            "content": {
+              "b2b": {
+                "businessIdentities": [
+                  {
+                    "qualifier": "AS2Identity",
+                    "value": "Contoso"
+                  },
+                  {
+                    "qualifier": "ZZ",
+                    "value": "1234567"
+                  }
+                ]
+              }
+            }
+          },
+          "type": "partners"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "Fabrikam",
+          "dependsOn": [
+            "[parameters('integrationAccountName')]"
+          ],
+          "properties": {
+            "partnerType": "B2B",
+            "content": {
+              "b2b": {
+                "businessIdentities": [
+                  {
+                    "qualifier": "AS2Identity",
+                    "value": "Fabrikam"
+                  },
+                  {
+                    "qualifier": "ZZ",
+                    "value": "0987654321"
+                  }
+                ]
+              }
+            }
+          },
+          "type": "partners"
+        },
+        {
+          "apiVersion": "2016-06-01",
+          "location": "[parameters('logicAppLocation')]",
+          "name": "[parameters('mapName')]",
+          "dependsOn": [
+            "[concat('Microsoft.Logic/integrationAccounts/', parameters('integrationAccountName'))]"
+          ],
+          "properties": {
+            "mapType": "Xslt",
+            "content": "<xsl:stylesheet xmlns:xsl=\"http://www.w3.org/1999/XSL/Transform\" xmlns:msxsl=\"urn:schemas-microsoft-com:xslt\" xmlns:var=\"http://schemas.microsoft.com/BizTalk/2003/var\" exclude-result-prefixes=\"msxsl var s1 userCSharp\" version=\"1.0\" xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\" xmlns:s1=\"http://MSIT.EAS.ICOE.VL.X12850.Shared.Schemas.PA.X1200401850\" xmlns:userCSharp=\"http://schemas.microsoft.com/BizTalk/2003/userCSharp\">\r\n <xsl:output omit-xml-declaration=\"yes\" method=\"xml\" version=\"1.0\" />\r\n <xsl:param name=\"Param\"/>\r\n <!--// Param required in format - <parameters><TradingPartner>partner</TradingPartner><GS03>GS03Val</GS03></parameters>-->\r\n <xsl:template match=\"/\">\r\n <xsl:apply-templates select=\"/s1:X12_00401_850\" />\r\n </xsl:template>\r\n <xsl:template match=\"/s1:X12_00401_850\">\r\n<!--<xsl:variable name=\"Param\" select=\"'&lt;parameters&gt;&lt;PartnerKey&gt;ZonesTest&lt;/PartnerKey&gt;&lt;GS03&gt;GS03TestVal&lt;/GS03&gt;&lt;/parameters&gt;'\"/>-->\r\n <!--<xsl:variable name=\"paramlist\" select=\"userCSharp:Tokenize($Param)\"/>-->\r\n \r\n <xsl:variable name=\"var:v1\" select=\"&quot;&quot;\" />\r\n <xsl:variable name=\"var:v2\" select=\"&quot;MSLicense3&quot;\" />\r\n <xsl:variable name=\"var:v3\" select=\"&quot;ORDER&quot;\" />\r\n <xsl:variable name=\"var:v4\" select=\"&quot;P&quot;\" />\r\n <xsl:variable name=\"var:v5\" select=\"&quot;1&quot;\" />\r\n <xsl:variable name=\"var:v6\" select=\"&quot;Microsoft&quot;\" />\r\n <xsl:variable name=\"var:v7\" select=\"&quot;MSLI3XMLOrder&quot;\" />\r\n <ns0:MSLI3XMLOrder>\r\n <ns0:routing>\r\n <xsl:attribute name=\"ReceiverQualifier\">\r\n <xsl:value-of select=\"$var:v1\" />\r\n \r\n </xsl:attribute>\r\n <xsl:attribute name=\"ReceiverKey\">\r\n <xsl:value-of select=\"$var:v2\" />\r\n <!--<xsl:value-of select=\"system-property('xsl:vendor')\"/>-->\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:value-of select=\"$var:v3\" />\r\n <!--<xsl:value-of select=\"system-property('xsl:vendor-url')\"/>-->\r\n </xsl:attribute>\r\n <xsl:attribute name=\"Standard\">\r\n <xsl:value-of select=\"$var:v4\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"Version\">\r\n <xsl:value-of select=\"$var:v5\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"SenderQualifier\">\r\n <xsl:value-of select=\"$var:v1\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"SenderKey\">\r\n <xsl:value-of select=\"$var:v6\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"DocumentName\">\r\n <xsl:value-of select=\"$var:v7\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ControlNumber\">\r\n <xsl:value-of select=\"s1:BEG/BEG03/text()\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"Status\">\r\n <xsl:value-of select=\"$var:v4\" />\r\n </xsl:attribute>\r\n </ns0:routing>\r\n <xsl:for-each select=\"s1:REF\">\r\n <xsl:variable name=\"var:v8\" select=\"&quot;850&quot;\" />\r\n <xsl:variable name=\"var:v12\" select=\"userCSharp:StringTrimLeft(string(../s1:BEG/BEG05/text()))\" />\r\n <xsl:variable name=\"var:v15\" select=\"userCSharp:StringTrimLeft(string(../s1:DTM/DTM02/text()))\" />\r\n <xsl:variable name=\"var:v18\" select=\"&quot;3.0&quot;\" />\r\n <xsl:variable name=\"var:v19\" select=\"userCSharp:DateCurrentDate()\" />\r\n <ns0:Header>\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:value-of select=\"$var:v8\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:v9\" select=\"userCSharp:GetLookupData($Param,'//parameters/Lookup/PartnerKey')\" />\r\n <xsl:variable name=\"var:v10\" select=\"userCSharp:SetSAPID(string($var:v9))\" />\r\n <xsl:variable name=\"var:v11\" select=\"userCSharp:StringUpperCase(string($var:v10))\" />\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:v11\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TransactionSetPurposeCode\">\r\n <xsl:value-of select=\"../s1:BEG/BEG01/text()\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"PONumber\">\r\n <xsl:value-of select=\"../s1:BEG/BEG03/text()\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:v13\" select=\"userCSharp:PODateCvt(string($var:v12))\" />\r\n <xsl:attribute name=\"PODate\">\r\n <xsl:value-of select=\"$var:v13\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:v14\" select=\"userCSharp:GetBeg(string(../s1:BEG/BEG02/text()))\" />\r\n <xsl:attribute name=\"POType\">\r\n <xsl:value-of select=\"$var:v14\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"CurrencyCode\">\r\n <xsl:value-of select=\"../s1:CUR/CUR02/text()\" />\r\n </xsl:attribute>\r\n <xsl:if test=\"REF02\">\r\n <xsl:attribute name=\"ProgCode\">\r\n <xsl:value-of select=\"REF02/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:variable name=\"var:v16\" select=\"userCSharp:UsageDateCvt(string($var:v15))\" />\r\n <xsl:attribute name=\"UsageDate\">\r\n <xsl:value-of select=\"$var:v16\" />\r\n </xsl:attribute>\r\n <!--<xsl:variable name=\"var:v17\" select=\"userCSharp:GetGS03()\" />-->\r\n <!--<xsl:variable name=\"var:v17\" select=\"$Param/Param/GS03/text()\" />-->\r\n <xsl:variable name=\"var:v17\" select=\"userCSharp:GetLookupData($Param,'//parameters/GS03')\" />\r\n <xsl:attribute name=\"Application\">\r\n <xsl:value-of select=\"$var:v17\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"Version\">\r\n <xsl:value-of select=\"$var:v18\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"EDIProcessedDate\">\r\n <xsl:value-of select=\"$var:v19\" />\r\n </xsl:attribute>\r\n </ns0:Header>\r\n </xsl:for-each>\r\n <xsl:variable name=\"var:v20\" select=\"userCSharp:InitCumulativeConcat(0)\" />\r\n <xsl:for-each select=\"/s1:X12_00401_850/s1:N1Loop1/s1:N1\">\r\n <xsl:variable name=\"var:v21\" select=\"userCSharp:StringConcat(string(N101/text()) , &quot;|&quot;)\" />\r\n <xsl:variable name=\"var:v22\" select=\"userCSharp:AddToCumulativeConcat(0,string($var:v21),&quot;1000&quot;)\" />\r\n </xsl:for-each>\r\n <xsl:variable name=\"var:v23\" select=\"userCSharp:GetCumulativeConcat(0)\" />\r\n <xsl:variable name=\"var:v24\" select=\"userCSharp:SetNAD(string($var:v23))\" />\r\n <xsl:variable name=\"var:v25\" select=\"userCSharp:LogicalNe(string($var:v24) , &quot; &quot;)\" />\r\n <xsl:if test=\"$var:v25\">\r\n <xsl:variable name=\"var:vSapid\" select=\"userCSharp:GetSAPID()\" />\r\n <xsl:for-each select=\"s1:N1Loop1[s1:N1/N101/text() = 'BT'] \">\r\n <xsl:variable name=\"var:N101\" select=\"string(s1:N1/N101/text())\" />\r\n <xsl:variable name=\"var:N102\" select=\"string(s1:N1/N102/text())\" />\r\n <xsl:variable name=\"var:N104\" select=\"string(s1:N1/N104/text())\" />\r\n<xsl:variable name=\"var:REF01\" select=\"string(//s1:REF_3[REF01='AH']/REF02/text())\" />\r\n\r\n <ns0:Participant xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\">\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:text>850</xsl:text>\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:vSapid\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantType\">\r\n <xsl:value-of select=\"$var:N101\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantName\">\r\n <xsl:value-of select=\"$var:N102\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantID\">\r\n <xsl:value-of select=\"$var:N104\" />\r\n </xsl:attribute>\r\n <xsl:choose>\r\n <xsl:when test=\"string($var:REF01)!=''\">\r\n <xsl:attribute name=\"ParticipantReference\">\r\n <xsl:value-of select=\"$var:REF01\" />\r\n </xsl:attribute>\r\n </xsl:when>\r\n <xsl:otherwise>\r\n <xsl:attribute name=\"ParticipantReference\">\r\n </xsl:attribute>\r\n </xsl:otherwise>\r\n </xsl:choose>\r\n\r\n\r\n </ns0:Participant>\r\n </xsl:for-each>\r\n <xsl:for-each select=\"s1:N1Loop1[s1:N1/N101/text() = 'DU'] \">\r\n <xsl:variable name=\"var:N101\" select=\"string(s1:N1/N101/text())\" />\r\n <xsl:variable name=\"var:N102\" select=\"string(s1:N1/N102/text())\" />\r\n <xsl:variable name=\"var:N104\" select=\"string(s1:N1/N104/text())\" />\r\n <xsl:variable name=\"var:REF01\" select=\"string(//s1:REF_3[REF01='DC']/REF02/text())\" />\r\n\r\n <ns0:Participant xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\">\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:text>850</xsl:text>\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:vSapid\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantType\">\r\n <xsl:value-of select=\"$var:N101\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantName\">\r\n <xsl:value-of select=\"$var:N102\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantID\">\r\n <xsl:value-of select=\"$var:N104\" />\r\n </xsl:attribute>\r\n <xsl:choose>\r\n <xsl:when test=\"string($var:REF01)!=''\">\r\n <xsl:attribute name=\"ParticipantReference\">\r\n <xsl:value-of select=\"$var:REF01\" />\r\n </xsl:attribute>\r\n </xsl:when>\r\n <xsl:otherwise>\r\n <xsl:attribute name=\"ParticipantReference\">\r\n </xsl:attribute>\r\n </xsl:otherwise>\r\n </xsl:choose>\r\n \r\n\r\n </ns0:Participant>\r\n </xsl:for-each>\r\n <xsl:for-each select=\"s1:N1Loop1[s1:N1/N101/text() = 'PT'] \">\r\n <xsl:variable name=\"var:N101\" select=\"string(s1:N1/N101/text())\" />\r\n <xsl:variable name=\"var:N102\" select=\"string(s1:N1/N102/text())\" />\r\n <xsl:variable name=\"var:N104\" select=\"string(s1:N1/N104/text())\" />\r\n\r\n <ns0:Participant xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\">\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:text>850</xsl:text>\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:vSapid\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantType\">\r\n <xsl:value-of select=\"$var:N101\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantName\">\r\n <xsl:value-of select=\"substring(s1:N1/N102/text(),0,35)\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantID\">\r\n <xsl:value-of select=\"substring(s1:N1/N104/text(),0,17)\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ParticipantReference\">\r\n </xsl:attribute>\r\n\r\n </ns0:Participant>\r\n </xsl:for-each>\r\n </xsl:if>\r\n <xsl:variable name=\"var:vsSapid1\" select=\"userCSharp:GetSAPID()\" />\r\n <xsl:variable name=\"var:vsCheckNAD\" select=\"userCSharp:GetNAD()\" />\r\n <xsl:if test=\"$var:vsCheckNAD ='TRUE'\">\r\n\r\n <ns0:ShipTo xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\">\r\n\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:text>850</xsl:text>\r\n </xsl:attribute>\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:vsSapid1\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ShipToOrganizationName\">\r\n </xsl:attribute>\r\n <xsl:attribute name=\"ShipToContactName\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToContactPhoneNumber\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToContactFaxNumber\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToContactEmailAddress\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToAddressLine1\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToAddressLine2\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToAddressLine3\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToAddressLine4\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToCity\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToStateProvince\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToPostalCode\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"ShipToCountryCode\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"Reference\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"CarrierCode\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"CarrierAccountNumber\">\r\n\r\n </xsl:attribute>\r\n\r\n <xsl:attribute name=\"CorrespondenceLanguageCode\">\r\n </xsl:attribute>\r\n </ns0:ShipTo>\r\n </xsl:if>\r\n <xsl:if test=\"$var:vsCheckNAD ='FALSE'\">\r\n <ns0:ShipTo xmlns:ns0=\"http://MSIT.EAS.ICOE.VL.X12850.MSLI3.Schemas.PA.MSLI3XMLOrder\">\r\n <xsl:for-each select=\"s1:N1Loop1[s1:N1/N101/text() = 'ST'] \">\r\n <xsl:variable name=\"var:vs24\" select=\"&quot;850&quot;\" />\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:value-of select=\"$var:vs24\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs25\" select=\"userCSharp:GetSAPID()\" />\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:vs25\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs27\" select=\"string(s1:N1/N101/text())\" />\r\n <xsl:variable name=\"var:vs28\" select=\"string(s1:N1/N102/text())\" />\r\n <xsl:attribute name=\"ShipToOrganizationName\">\r\n <xsl:value-of select=\"$var:vs28\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs29\" select=\"string(s1:PER_2/PER02/text())\" />\r\n <xsl:attribute name=\"ShipToContactName\">\r\n <xsl:value-of select=\"$var:vs29\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs30\" select=\"string(s1:PER_2/PER04/text())\" />\r\n <xsl:attribute name=\"ShipToContactPhoneNumber\">\r\n <xsl:value-of select=\"$var:vs30\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs31\" select=\"string(s1:PER_2/PER06/text())\" />\r\n <xsl:attribute name=\"ShipToContactFaxNumber\">\r\n <xsl:value-of select=\"$var:vs31\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs32\" select=\"string(s1:PER_2/PER08/text())\" />\r\n <xsl:attribute name=\"ShipToContactEmailAddress\">\r\n <xsl:value-of select=\"$var:vs32\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs33\" select=\"string(s1:N3[1]/N301/text())\" />\r\n <xsl:attribute name=\"ShipToAddressLine1\">\r\n <xsl:value-of select=\"$var:vs33\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs34\" select=\"string(s1:N3[1]/N302/text())\" />\r\n <xsl:attribute name=\"ShipToAddressLine2\">\r\n <xsl:value-of select=\"$var:vs34\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs35\" select=\"string(s1:N3[2]/N301/text())\" />\r\n <xsl:attribute name=\"ShipToAddressLine3\">\r\n <xsl:value-of select=\"$var:vs35\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs36\" select=\"string(s1:N3[2]/N302/text())\" />\r\n <xsl:attribute name=\"ShipToAddressLine4\">\r\n <xsl:value-of select=\"$var:vs36\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs38\" select=\"string(s1:N4/N401/text())\" />\r\n <xsl:attribute name=\"ShipToCity\">\r\n <xsl:value-of select=\"$var:vs38\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs39\" select=\"string(s1:N4/N402/text())\" />\r\n <xsl:attribute name=\"ShipToStateProvince\">\r\n <xsl:value-of select=\"$var:vs39\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs40\" select=\"string(s1:N4/N403/text())\" />\r\n <xsl:attribute name=\"ShipToPostalCode\">\r\n <xsl:value-of select=\"$var:vs40\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs41\" select=\"string(s1:N4/N404/text())\" />\r\n <xsl:attribute name=\"ShipToCountryCode\">\r\n <xsl:value-of select=\"$var:vs41\" />\r\n </xsl:attribute>\r\n <xsl:variable name=\"var:vs42\" select=\"string(s1:PKG_2/PKG05/text())\" />\r\n <xsl:attribute name=\"Reference\">\r\n <xsl:value-of select=\"$var:vs42\" />\r\n </xsl:attribute>\r\n\r\n <xsl:variable name=\"var:vs44\" select=\"string(s1:REF_3/REF01/text())\" />\r\n <xsl:variable name=\"var:vs45\" select=\"string(s1:REF_3/REF02/text())\" />\r\n <xsl:choose>\r\n <xsl:when test=\"$var:vs44 = 'KK'\">\r\n <xsl:attribute name=\"CarrierCode\">\r\n <xsl:value-of select=\"$var:vs45\" />\r\n </xsl:attribute>\r\n </xsl:when>\r\n <xsl:otherwise>\r\n <xsl:attribute name=\"CarrierCode\">\r\n </xsl:attribute>\r\n </xsl:otherwise>\r\n </xsl:choose>\r\n <xsl:choose>\r\n <xsl:when test=\"$var:vs44 = 'KK'\">\r\n <xsl:attribute name=\"CarrierAccountNumber\">\r\n <xsl:value-of select=\"$var:vs45\" />\r\n </xsl:attribute>\r\n </xsl:when>\r\n <xsl:otherwise>\r\n <xsl:attribute name=\"CarrierAccountNumber\">\r\n </xsl:attribute>\r\n </xsl:otherwise>\r\n </xsl:choose>\r\n\r\n <xsl:choose>\r\n <xsl:when test=\"$var:vs44 = 'KK'\">\r\n <xsl:attribute name=\"CorrespondenceLanguageCode\">\r\n <xsl:value-of select=\"$var:vs45\" />\r\n </xsl:attribute>\r\n </xsl:when>\r\n <xsl:otherwise>\r\n <xsl:attribute name=\"CorrespondenceLanguageCode\">\r\n </xsl:attribute>\r\n </xsl:otherwise>\r\n </xsl:choose>\r\n </xsl:for-each>\r\n </ns0:ShipTo>\r\n </xsl:if>\r\n <xsl:for-each select=\"s1:PO1Loop1\">\r\n <xsl:variable name=\"var:v26\" select=\"&quot;850&quot;\" />\r\n <xsl:variable name=\"var:v30\" select=\"userCSharp:MathAbs(string(s1:PO1/PO104/text()))\" />\r\n <xsl:variable name=\"var:v31\" select=\"userCSharp:LogicalExistence(boolean(s1:PO1/PO105))\" />\r\n <xsl:variable name=\"var:v32\" select=\"userCSharp:LogicalEq(string($var:v31) , &quot;false&quot;)\" />\r\n <ns0:LineItem>\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:value-of select=\"$var:v26\" />\r\n </xsl:attribute>\r\n <!--<xsl:variable name=\"var:v27\" select=\"userCSharp:GetTPKey()\" />-->\r\n <xsl:variable name=\"var:v27\" select=\"userCSharp:GetLookupData($Param,'//parameters/Lookup/PartnerKey')\" />\r\n <xsl:variable name=\"var:v28\" select=\"userCSharp:SetSAPID(string($var:v27))\" />\r\n <xsl:variable name=\"var:v29\" select=\"userCSharp:StringUpperCase(string($var:v28))\" />\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:v29\" />\r\n </xsl:attribute>\r\n <xsl:if test=\"s1:PO1/PO101\">\r\n <xsl:attribute name=\"LineNo\">\r\n <xsl:value-of select=\"s1:PO1/PO101/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"s1:PO1/PO102\">\r\n <xsl:attribute name=\"Quantity\">\r\n <xsl:value-of select=\"s1:PO1/PO102/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:attribute name=\"Price\">\r\n <xsl:value-of select=\"$var:v30\" />\r\n </xsl:attribute>\r\n <xsl:if test=\"s1:PO1/PO107\">\r\n <xsl:attribute name=\"MSSKU\">\r\n <xsl:value-of select=\"s1:PO1/PO107/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"s1:PO1/PO103\">\r\n <xsl:attribute name=\"UM\">\r\n <xsl:value-of select=\"s1:PO1/PO103/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v32)='true'\">\r\n <xsl:variable name=\"var:v33\" select=\"&quot; &quot;\" />\r\n <xsl:attribute name=\"UMQty\">\r\n <xsl:value-of select=\"$var:v33\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v31)='true'\">\r\n <xsl:variable name=\"var:v34\" select=\"s1:PO1/PO105/text()\" />\r\n <xsl:variable name=\"var:v35\" select=\"userCSharp:UmQty(string($var:v34))\" />\r\n <xsl:attribute name=\"UMQty\">\r\n <xsl:value-of select=\"$var:v35\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:for-each select=\"s1:REF_7\">\r\n <xsl:variable name=\"var:v36\" select=\"userCSharp:LogicalEq(string(REF01/text()) , &quot;LI&quot;)\" />\r\n <xsl:variable name=\"var:v38\" select=\"string(REF01/text())\" />\r\n <xsl:variable name=\"var:v39\" select=\"userCSharp:LogicalEq($var:v38 , &quot;PD&quot;)\" />\r\n <xsl:variable name=\"var:v41\" select=\"userCSharp:LogicalEq($var:v38 , &quot;PT&quot;)\" />\r\n <xsl:variable name=\"var:v43\" select=\"userCSharp:LogicalEq($var:v38 , &quot;CE&quot;)\" />\r\n <xsl:variable name=\"var:v45\" select=\"userCSharp:LogicalEq($var:v38 , &quot;EU&quot;)\" />\r\n <xsl:variable name=\"var:v47\" select=\"userCSharp:LogicalEq($var:v38 , &quot;ZZ&quot;)\" />\r\n <References>\r\n <xsl:if test=\"string($var:v36)='true'\">\r\n <xsl:variable name=\"var:v37\" select=\"&quot;POLIRefID&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v37\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v39)='true'\">\r\n <xsl:variable name=\"var:v40\" select=\"&quot;SpecialDealNumber&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v40\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v41)='true'\">\r\n <xsl:variable name=\"var:v42\" select=\"&quot;BillingOption&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v42\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v43)='true'\">\r\n <xsl:variable name=\"var:v44\" select=\"&quot;OfferingType&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v44\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v45)='true'\">\r\n <xsl:variable name=\"var:v46\" select=\"&quot;EndUserPO&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v46\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v47)='true'\">\r\n <xsl:variable name=\"var:v48\" select=\"&quot;UsageCountry&quot;\" />\r\n <xsl:attribute name=\"Type\">\r\n <xsl:value-of select=\"$var:v48\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v36)='true'\">\r\n <xsl:variable name=\"var:v49\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v49\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v39)='true'\">\r\n <xsl:variable name=\"var:v50\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v50\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v41)='true'\">\r\n <xsl:variable name=\"var:v51\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v51\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v43)='true'\">\r\n <xsl:variable name=\"var:v52\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v52\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v45)='true'\">\r\n <xsl:variable name=\"var:v53\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v53\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:if test=\"string($var:v47)='true'\">\r\n <xsl:variable name=\"var:v54\" select=\"REF02/text()\" />\r\n <xsl:attribute name=\"Value\">\r\n <xsl:value-of select=\"$var:v54\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n </References>\r\n </xsl:for-each>\r\n </ns0:LineItem>\r\n </xsl:for-each>\r\n <xsl:for-each select=\"s1:CTTLoop1\">\r\n <xsl:variable name=\"var:v55\" select=\"&quot;850&quot;\" />\r\n <ns0:Summary>\r\n <xsl:attribute name=\"TransactionType\">\r\n <xsl:value-of select=\"$var:v55\" />\r\n </xsl:attribute>\r\n <!--<xsl:variable name=\"var:v56\" select=\"userCSharp:GetTPKey()\" />-->\r\n <xsl:variable name=\"var:v56\" select=\"userCSharp:GetLookupData($Param,'//parameters/Lookup/PartnerKey')\" />\r\n <xsl:variable name=\"var:v57\" select=\"userCSharp:SetSAPID(string($var:v56))\" />\r\n <xsl:variable name=\"var:v58\" select=\"userCSharp:StringUpperCase(string($var:v57))\" />\r\n <xsl:attribute name=\"TradingPartner\">\r\n <xsl:value-of select=\"$var:v58\" />\r\n </xsl:attribute>\r\n <xsl:attribute name=\"LineCount\">\r\n <xsl:value-of select=\"s1:CTT/CTT01/text()\" />\r\n </xsl:attribute>\r\n <xsl:if test=\"s1:CTT/CTT02\">\r\n <xsl:attribute name=\"HashQuantity\">\r\n <xsl:value-of select=\"s1:CTT/CTT02/text()\" />\r\n </xsl:attribute>\r\n </xsl:if>\r\n <xsl:variable name=\"var:v59\" select=\"userCSharp:InitCumulativeSum(0)\" />\r\n <xsl:for-each select=\"/s1:X12_00401_850/s1:PO1Loop1/s1:PO1\">\r\n <xsl:variable name=\"var:v60\" select=\"userCSharp:MathMultiply(string(PO104/text()) , string(PO102/text()))\" />\r\n <xsl:variable name=\"var:v61\" select=\"userCSharp:AddToCumulativeSum(0,string($var:v60),&quot;1000&quot;)\" />\r\n </xsl:for-each>\r\n <xsl:variable name=\"var:v62\" select=\"userCSharp:GetCumulativeSum(0)\" />\r\n <xsl:attribute name=\"POTotalAmt\">\r\n <xsl:value-of select=\"$var:v62\" />\r\n </xsl:attribute>\r\n </ns0:Summary>\r\n </xsl:for-each>\r\n </ns0:MSLI3XMLOrder>\r\n </xsl:template>\r\n <msxsl:script language=\"C#\" implements-prefix=\"userCSharp\"><![CDATA[\r\npublic string MathMultiply(string param0, string param1)\r\n{\r\n\tSystem.Collections.ArrayList listValues = new System.Collections.ArrayList();\r\n\tlistValues.Add(param0);\r\n\tlistValues.Add(param1);\r\n\tdouble ret = 1;\r\n\tbool first = true;\r\n\tforeach (string obj in listValues)\r\n\t{\r\n\t\tdouble d = 0;\r\n\t\tif (IsNumeric(obj, ref d))\r\n\t\t{\r\n\t\t\tif (first)\r\n\t\t\t{\r\n\t\t\t\tfirst = false;\r\n\t\t\t\tret = d;\r\n\t\t\t}\r\n\t\t\telse\r\n\t\t\t{\r\n\t\t\t\tret *= d;\r\n\t\t\t}\r\n\t\t}\r\n\t\telse\r\n\t\t{\r\n\t\t\treturn \"\";\r\n\t\t}\r\n\t}\r\n\treturn ret.ToString(System.Globalization.CultureInfo.InvariantCulture);\r\n}\r\n\r\n\r\npublic string InitCumulativeSum(int index)\r\n{\r\n\tif (index >= 0)\r\n\t{\r\n\t\tif (index >= myCumulativeSumArray.Count)\r\n\t\t{\r\n\t\t\tint i = myCumulativeSumArray.Count;\r\n\t\t\tfor (; i<=index; i++)\r\n\t\t\t{\r\n\t\t\t\tmyCumulativeSumArray.Add(\"\");\r\n\t\t\t}\r\n\t\t}\r\n\t\telse\r\n\t\t{\r\n\t\t\tmyCumulativeSumArray[index] = \"\";\r\n\t\t}\r\n\t}\r\n\treturn \"\";\r\n}\r\n\r\npublic System.Collections.ArrayList myCumulativeSumArray = new System.Collections.ArrayList();\r\n\r\npublic string AddToCumulativeSum(int index, string val, string notused)\r\n{\r\n\tif (index < 0 || index >= myCumulativeSumArray.Count)\r\n\t{\r\n\t\treturn \"\";\r\n }\r\n\tdouble d = 0;\r\n\tif (IsNumeric(val, ref d))\r\n\t{\r\n\t\tif (myCumulativeSumArray[index] == \"\")\r\n\t\t{\r\n\t\t\tmyCumulativeSumArray[index] = d;\r\n\t\t}\r\n\t\telse\r\n\t\t{\r\n\t\t\tmyCumulativeSumArray[index] = (double)(myCumulativeSumArray[index]) + d;\r\n\t\t}\r\n\t}\r\n\treturn (myCumulativeSumArray[index] is double) ? ((double)myCumulativeSumArray[index]).ToString(System.Globalization.CultureInfo.InvariantCulture) : \"\";\r\n}\r\n\r\npublic string GetCumulativeSum(int index)\r\n{\r\n\tif (index < 0 || index >= myCumulativeSumArray.Count)\r\n\t{\r\n\t\treturn \"\";\r\n\t}\r\n\treturn (myCumulativeSumArray[index] is double) ? ((double)myCumulativeSumArray[index]).ToString(System.Globalization.CultureInfo.InvariantCulture) : \"\";\r\n}\r\n\r\npublic string SAPID;\r\npublic string SetSAPID(string tpKey)\r\n{\r\n SAPID = tpKey;\r\n return SAPID;\r\n}\r\n\r\npublic string StringUpperCase(string str)\r\n{\r\n\tif (str == null)\r\n\t{\r\n\t\treturn \"\";\r\n\t}\r\n\treturn str.ToUpper(System.Globalization.CultureInfo.InvariantCulture);\r\n}\r\n\r\n\r\n\r\n\r\npublic string StringTrimLeft(string str)\r\n{\r\n\tif (str == null)\r\n\t{\r\n\t\treturn \"\";\r\n\t}\r\n\treturn str.TrimStart(null);\r\n}\r\n\r\n\r\npublic string PODateCvt(string PODate) {\r\n\tobject year;\r\n\tobject month;\r\n\tobject day;\r\n string poDateCvt;\r\n poDateCvt = \" \";\r\n if ((PODate != \"\")) {\r\n year = PODate.Substring(0, 4);\r\n month = PODate.Substring(4, 2);\r\n day = PODate.Substring((PODate.Length - 2));\r\n PODate = (year + (\"-\" \r\n + (month + (\"-\" + day))));\r\n poDateCvt = PODate;\r\n }\r\n return poDateCvt.Trim();\r\n }\r\n\r\npublic string UsageDateCvt(string usageDate) {\r\n\tobject year;\r\n\tobject month;\r\n\tobject day;\r\n string usageDateCvt;\r\n usageDateCvt = \" \";\r\n if ((usageDate != \"\")) {\r\n year = usageDate.Substring(0, 4);\r\n month = usageDate.Substring(4, 2);\r\n day = usageDate.Substring((usageDate.Length - 2));\r\n usageDate = (year + (\"-\" \r\n + (month + (\"-\" + day))));\r\n usageDateCvt = usageDate;\r\n }\r\n return usageDateCvt.Trim();\r\n }\r\n\r\npublic string DateCurrentDate()\r\n{\r\n\tDateTime dt = DateTime.Now;\r\n\treturn dt.ToString(\"yyyy-MM-dd\", System.Globalization.CultureInfo.InvariantCulture);\r\n}\r\n\r\n\r\npublic string GetBeg( string BEG02)\r\n{\r\n\r\nif (BEG02== \"ST\")\r\n{\r\nBEG02=\"TP\";\r\n\r\n}\r\n\r\n return BEG02;\r\n}\r\n\r\n public string GetSAPID()\r\n {\r\n if (string.IsNullOrEmpty(SAPID))\r\n {\r\n return \"\";\r\n }\r\n else\r\n {\r\n return SAPID;\r\n }\r\n }\r\n\r\npublic string InitCumulativeConcat(int index)\r\n{\r\n\tif (index >= 0)\r\n\t{\r\n\t\tif (index >= myCumulativeConcatArray.Count)\r\n\t\t{\r\n\t\t\tint i = myCumulativeConcatArray.Count;\r\n\t\t\tfor (; i<=index; i++)\r\n\t\t\t{\r\n\t\t\t\tmyCumulativeConcatArray.Add(\"\");\r\n\t\t\t}\r\n\t\t}\r\n\t\telse\r\n\t\t{\r\n\t\t\tmyCumulativeConcatArray[index] = \"\";\r\n\t\t}\r\n\t}\r\n\treturn \"\";\r\n}\r\n\r\npublic System.Collections.ArrayList myCumulativeConcatArray = new System.Collections.ArrayList();\r\n\r\npublic string AddToCumulativeConcat(int index, string val, string notused)\r\n{\r\n\tif (index < 0 || index >= myCumulativeConcatArray.Count)\r\n\t{\r\n\t\treturn \"\";\r\n\t}\r\n\tmyCumulativeConcatArray[index] = (string)(myCumulativeConcatArray[index]) + val;\r\n\treturn myCumulativeConcatArray[index].ToString();\r\n}\r\n\r\npublic string GetCumulativeConcat(int index)\r\n{\r\n\tif (index < 0 || index >= myCumulativeConcatArray.Count)\r\n\t{\r\n\t\treturn \"\";\r\n\t}\r\n\treturn myCumulativeConcatArray[index].ToString();\r\n}\r\n\r\npublic string StringConcat(string param0, string param1)\r\n{\r\n return param0 + param1;\r\n}\r\n\r\n\r\nstring checkNAD;\r\npublic string SetNAD(string ConNAD)\r\n{\r\nif(ConNAD.Contains(\"ST\"))\r\n{\r\ncheckNAD=\"FALSE\";\r\n}\r\nelse \r\n {\r\n checkNAD=\"TRUE\";\r\n} \r\nreturn checkNAD;\r\n}\r\n\r\npublic bool LogicalNe(string val1, string val2)\r\n{\r\n\tbool ret = false;\r\n\tdouble d1 = 0;\r\n\tdouble d2 = 0;\r\n\tif (IsNumeric(val1, ref d1) && IsNumeric(val2, ref d2))\r\n\t{\r\n\t\tret = d1 != d2;\r\n\t}\r\n\telse\r\n\t{\r\n\t\tret = String.Compare(val1, val2, StringComparison.Ordinal) != 0;\r\n\t}\r\n\treturn ret;\r\n}\r\n\r\n\r\npublic string GetNAD()\r\n{\r\n return checkNAD;\r\n}\r\n\r\npublic bool LogicalEq(string val1, string val2)\r\n{\r\n\tbool ret = false;\r\n\tdouble d1 = 0;\r\n\tdouble d2 = 0;\r\n\tif (IsNumeric(val1, ref d1) && IsNumeric(val2, ref d2))\r\n\t{\r\n\t\tret = d1 == d2;\r\n\t}\r\n\telse\r\n\t{\r\n\t\tret = String.Compare(val1, val2, StringComparison.Ordinal) == 0;\r\n\t}\r\n\treturn ret;\r\n}\r\n\r\n\r\npublic bool LogicalExistence(bool val)\r\n{\r\n\treturn val;\r\n}\r\n\r\n\r\npublic string UmQty(string param1)\r\n{\r\n\treturn param1.Trim().PadRight(30,' ');\r\n}\r\n\r\npublic string MathAbs(string val)\r\n{\r\n\tstring retval = \"\";\r\n\tdouble d = 0;\r\n\tif (IsNumeric(val, ref d))\r\n\t{\r\n\t\tdouble abs = Math.Abs(d);\r\n\t\tretval = abs.ToString(System.Globalization.CultureInfo.InvariantCulture);\r\n\t}\r\n\treturn retval;\r\n}\r\n\r\n\r\npublic bool IsNumeric(string val)\r\n{\r\n\tif (val == null)\r\n\t{\r\n\t\treturn false;\r\n\t}\r\n\tdouble d = 0;\r\n\treturn Double.TryParse(val, System.Globalization.NumberStyles.AllowThousands | System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d);\r\n}\r\n\r\npublic bool IsNumeric(string val, ref double d)\r\n{\r\n\tif (val == null)\r\n\t{\r\n\t\treturn false;\r\n\t}\r\n\treturn Double.TryParse(val, System.Globalization.NumberStyles.AllowThousands | System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d);\r\n}\r\n\r\n XmlDocument doc = null;\r\n public string GetLookupData(string lookup, string key)\r\n {\r\n if (doc == null)\r\n {\r\n doc = new XmlDocument();\r\n doc.LoadXml(\"<LookupValues/>\");\r\n doc.DocumentElement.InnerXml = lookup;\r\n }\r\n XmlNode keyNode = doc.DocumentElement.SelectSingleNode(key);\r\n if(keyNode != null)\r\n return keyNode.InnerText; \r\n else\r\n return \"\";\r\n }\r\n\r\n\r\n]]></msxsl:script>\r\n</xsl:stylesheet>",
+            "contentType": "application/xml"
+          },
+          "type": "maps"
+        }
+      ],
+      "sku": {
+        "name": "[parameters('integrationAccountSku')]"
+      },
+      "type": "Microsoft.Logic/IntegrationAccounts"
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('x12_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "displayName": "[parameters('x12_Connection_DisplayName')]",
+        "parameterValues": {
+          "integrationAccountId": "[resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName'))]",
+          "integrationAccountUrl": "[listCallbackURL(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2015-08-01-preview').value]"
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('as2_Connection_Name')]",
+      "location": "[parameters('logicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('logicAppLocation'), '/managedApis/', 'as2')]"
+        },
+        "displayName": "[parameters('as2_Connection_DisplayName')]",
+        "parameterValues": {
+          "integrationAccountId": "[resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName'))]",
+          "integrationAccountUrl": "[listCallbackURL(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2015-08-01-preview').value]"
+        }
+      }
+    },
+    {
+      "name": "[parameters('EncodeLogicAppName')]",
+      "type": "Microsoft.Logic/workflows",
+      "location": "[parameters('EncodeLogicAppLocation')]",
+      "apiVersion": "2016-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/connections', parameters('x12_Encode_Connection_Name'))]",
+        "[resourceId('Microsoft.Web/connections', parameters('as2_Encode_Connection_Name'))]",
+        "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+      ],
+      "tags": {
+        "displayName": "EncodeLogicApp"
+      },
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "DecodeB2BLA": {
+              "inputs": {
+                "body": "@base64toBinary(body('Encode_to_AS2_message')?['AS2Message']?['Content'])",
+                "headers": "@body('Encode_to_AS2_message')?['AS2Message']?['OutboundHeaders']",
+                "host": {
+                  "triggerName": "manual",
+                  "workflow": {
+                    "id": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+                  }
+                }
+              },
+              "runAfter": {
+                "Encode_to_AS2_message": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Workflow"
+            },
+            "Encode_to_X12_message_by_agreement_name": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+
+                  "connection": {
+                    "name": "@parameters('$connections')['x12Encode']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/encode/resolvebyname",
+                "queries": {
+                  "agreementName": "X12agreement"
+                },
+                "body": "@triggerBody()"
+              },
+              "runAfter": {}
+            },
+            "Encode_to_AS2_message": {
+              "type": "ApiConnection",
+              "inputs": {
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['as2Encode']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/encode",
+                "queries": {
+                  "as2From": "@{body('Encode_to_X12_message_by_agreement_name')?['hostPartnerName']}",
+                  "as2To": "@{body('Encode_to_X12_message_by_agreement_name')?['guestPartnerName']}"
+                },
+                "body": "@base64toBinary(body('Encode_to_X12_message_by_agreement_name')?['Payload'])"
+              },
+              "runAfter": {
+                "Encode_to_X12_message_by_agreement_name": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "$connections": {
+              "defaultValue": {},
+              "type": "Object"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {}
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "$connections": {
+            "value": {
+              "x12Encode": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('EncodeLogicAppLocation'), '/managedApis/', 'x12')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('x12_Encode_Connection_Name'))]",
+                "connectionName": "[parameters('x12_Encode_Connection_Name')]"
+              },
+              "as2Encode": {
+                "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('EncodeLogicAppLocation'), '/managedApis/', 'as2')]",
+                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('as2_encode_Connection_Name'))]",
+                "connectionName": "[parameters('as2_encode_Connection_Name')]"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('x12_Encode_Connection_Name')]",
+      "location": "[parameters('EncodeLogicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('EncodeLogicAppLocation'), '/managedApis/', 'x12')]"
+        },
+        "displayName": "[parameters('x12_Encode_Connection_Name')]",
+        "parameterValues": {
+          "integrationAccountId": "[resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName'))]",
+          "integrationAccountUrl": "[listCallbackURL(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2015-08-01-preview').value]"
+        }
+      }
+    },
+    {
+      "type": "MICROSOFT.WEB/CONNECTIONS",
+      "apiVersion": "2016-06-01",
+      "name": "[parameters('as2_encode_Connection_Name')]",
+      "location": "[parameters('EncodeLogicAppLocation')]",
+      "properties": {
+        "api": {
+          "id": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('EncodeLogicAppLocation'), '/managedApis/', 'as2')]"
+        },
+        "displayName": "[parameters('as2_encode_Connection_Name')]",
+        "parameterValues": {
+          "integrationAccountId": "[resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName'))]",
+          "integrationAccountUrl": "[listCallbackURL(resourceId('Microsoft.Logic/IntegrationAccounts', parameters('integrationAccountName')), '2015-08-01-preview').value]"
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}
