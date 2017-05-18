@@ -72,12 +72,15 @@ Scenario 4: This includes Scenario 2 , 3 with Primary and secondary resource gro
             $SubscriptionId (“Subscription Id”)
             $SecondaryResourceGroupName  (“secondary Resource group name”)
             $SecondaryResourceGroupLocation  (“secondary Resource group Location”)
-
           Send a message to Receive/Inbound/Decode logic app (EncodeB2BLA) get the URL of the Http Request and use the message from “EncodeLAInputMessage.txt” file.
             AS2 Signing, Encryption and Compression are enabled for Encode and Decode flow.
           Send a message to Receive/Inbound/Decode logic app (DecodeB2BLAE2E) get the URL of the Http Request and use the message from “DecodeLAInputMessage.txt” file.
             AS2 Signing, Encryption and Compression are enabled for Encode and Decode flow.
           We can do the above two steps in both primary and secondary resource groups.
+
+
+Note: To get better performance created seperate connection for all the scenarioes where ever needed , so you might think why would we need these many connections ("Just for perforamnce Reasons").
+
 
 
 
