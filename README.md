@@ -8,6 +8,14 @@ Azure PowerShell
 
 There are Four different scenario logic apps E2E with Deployment, artifacts ( agreements, Certs, Schemas and transform) and sample Message were also added.
 
+Requests Notes:
+	All requestd are Post requests we can use Postman (https://www.getpostman.com/) for making these requests.
+	When we are making any request to Decode/Inbound LogicApp/action we need to make sure to add these Headers to the request 
+		AS2-To:Contoso
+		AS2-From:Fabrikam
+		message-id:(As2 message Id)
+		
+		
 Scenario 1: Individual Encode/Send/Outbound message and Decode/Receive/Inbound
 
       Steps: 	Copy IndividualDecodeand EncodeLogicApps to local machine.
