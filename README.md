@@ -2,9 +2,8 @@
 Samples for multiple scenario of Logic Apps E2E
 
 Prerequisites: 
-
-Latest Azure SDK (2.9.1 or greater)
-Azure PowerShell
+	Latest Azure SDK (2.9.1 or greater) (https://azure.microsoft.com/downloads/)
+	Azure PowerShell (https://github.com/Azure/azure-powershell#installation)
 
 There are Four different scenario logic apps E2E with Deployment, artifacts ( agreements, Certs, Schemas and transform) and sample Message were also added.
 
