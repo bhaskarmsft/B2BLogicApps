@@ -35,9 +35,14 @@ New-AzureRmResourceGroup -Location "$ResourceGroupLocation" -Name $ResourceGroup
 
     $ArtifactsLocationName = '_artifactsLocation'
     $ArtifactsLocationSasTokenName = '_artifactsLocationSasToken'
-
-	$StorageAccountName = $ResourceGroupName.ToLower()
-	$StorageContainerName = "artifacts"
+	
+	$storageName = $ResourceGroupName.ToLower() -replace '[^a-zA-Z0-9]', ''
+	if ($storageName.Length -gt 24)
+	{
+	    $storageName = $storageName.Substring(0,24)
+	}
+    $StorageAccountName = $storageName
+    $StorageContainerName = "artifacts"
     $StorageAccount = (Get-AzureRmStorageAccount | Where-Object{$_.StorageAccountName -eq $StorageAccountName})
 
     # Create the storage account if it doesn't already exist
