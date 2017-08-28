@@ -546,7 +546,7 @@
                       "useControlStandardsIdAsRepetitionCharacter": false,
                       "senderApplicationId": "100",
                       "receiverApplicationId": "100",
-                      "controlVersionNumber": "0.0",
+                      "controlVersionNumber": "00401",
                       "interchangeControlNumberLowerBound": 1,
                       "interchangeControlNumberUpperBound": 999999999,
                       "rolloverInterchangeControlNumber": true,
